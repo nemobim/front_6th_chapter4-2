@@ -93,7 +93,7 @@ const fetchLiberalArtsFn = () => axios.get<Lecture[]>("/schedules-liberal-arts.j
 const fetchMajors = () => cache.get("majors", fetchMajorsFn);
 const fetchLiberalArts = () => cache.get("liberal-arts", fetchLiberalArtsFn);
 
-// TODO: 이 코드를 개선해서 API 호출을 최소화 해보세요 + Promise.all이 현재 잘못 사용되고 있습니다. 같이 개선해주세요.
+  // TODO: 이 코드를 개선해서 API 호출을 최소화 해보세요 + Promise.all이 현재 잘못 사용되고 있습니다. 같이 개선해주세요.
 const fetchAllLectures = async () => {
   // Promise 배열을 먼저 생성하여 병렬 실행 보장
   const promises = [
@@ -105,6 +105,7 @@ const fetchAllLectures = async () => {
     fetchLiberalArts(), // API Call 6 - 캐시에서 반환
   ];
 
+  // 각 Promise 시작 시점 로깅
   promises.forEach((_, index) => {
     console.log(`API Call ${index + 1}`, performance.now());
   });
@@ -220,6 +221,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     majors: [],
   });
 
+  // 2) 불필요한 연산 방지 - 필터링 결과를 캐시하여 인피니트 스크롤시 재검색 방지
   const filteredLectures = useMemo(() => {
     const { query = "", credits, grades, days, times, majors } = searchOptions;
 
@@ -266,10 +268,14 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
       return true;
     });
-  }, [lectures, searchOptions]);
+  }, [lectures, searchOptions]); // searchOptions 변경시에만 재계산
 
   const lastPage = useMemo(() => Math.ceil(filteredLectures.length / PAGE_SIZE), [filteredLectures.length]);
-  const visibleLectures = useMemo(() => filteredLectures.slice(0, page * PAGE_SIZE), [filteredLectures, page]);
+  
+  // 인피니트 스크롤용 - 이미 필터링된 결과를 슬라이싱만 (검색 재실행 X)
+  const visibleLectures = useMemo(() => {
+    return filteredLectures.slice(0, page * PAGE_SIZE);
+  }, [filteredLectures, page]);
   const allMajors = useMemo(() => [...new Set(lectures.map((lecture) => lecture.major))], [lectures]);
 
   // 정렬된 시간 목록 메모화
