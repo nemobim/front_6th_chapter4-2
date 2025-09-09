@@ -99,10 +99,10 @@ const fetchAllLectures = async () => {
   const promises = [
     fetchMajors(), // API Call 1
     fetchLiberalArts(), // API Call 2
-    fetchMajors(), // API Call 3 - 캐시에서 반환
-    fetchLiberalArts(), // API Call 4 - 캐시에서 반환
-    fetchMajors(), // API Call 5 - 캐시에서 반환
-    fetchLiberalArts(), // API Call 6 - 캐시에서 반환
+    fetchMajors(), // API Call 3
+    fetchLiberalArts(), // API Call 4
+    fetchMajors(), // API Call 5
+    fetchLiberalArts(), // API Call 6
   ];
 
   // 각 Promise 시작 시점 로깅
@@ -117,16 +117,8 @@ const fetchAllLectures = async () => {
 };
 
 const LectureRow = memo(
-  ({
-    lecture,
-    index,
-    onAddSchedule,
-  }: {
-    lecture: Lecture;
-    index: number;
-    onAddSchedule: (lecture: Lecture) => void;
-  }) => (
-    <Tr key={`${lecture.id}-${index}`}>
+  ({ lecture, onAddSchedule }: { lecture: Lecture; onAddSchedule: (lecture: Lecture) => void }) => (
+    <Tr>
       <Td width="100px">{lecture.id}</Td>
       <Td width="50px">{lecture.grade}</Td>
       <Td width="200px">{lecture.title}</Td>
@@ -204,6 +196,139 @@ const DayCheckbox = memo(({ day, isSelected }: { day: string; isSelected: boolea
 ));
 
 DayCheckbox.displayName = "DayCheckbox";
+
+// 검색어 FormControl
+const SearchQueryFormControl = memo(
+  ({ query, onChange }: { query: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+    <FormControl>
+      <FormLabel>검색어</FormLabel>
+      <Input placeholder="과목명 또는 과목코드" value={query} onChange={onChange} />
+    </FormControl>
+  )
+);
+
+SearchQueryFormControl.displayName = "SearchQueryFormControl";
+
+// 학점 FormControl
+const CreditsFormControl = memo(
+  ({
+    credits,
+    onChange,
+  }: {
+    credits: string | undefined;
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  }) => (
+    <FormControl>
+      <FormLabel>학점</FormLabel>
+      <Select value={credits} onChange={onChange}>
+        <option value="">전체</option>
+        <option value="1">1학점</option>
+        <option value="2">2학점</option>
+        <option value="3">3학점</option>
+      </Select>
+    </FormControl>
+  )
+);
+
+CreditsFormControl.displayName = "CreditsFormControl";
+
+// 학년 FormControl
+const GradesFormControl = memo(({ grades, onChange }: { grades: number[]; onChange: (value: string[]) => void }) => (
+  <FormControl>
+    <FormLabel>학년</FormLabel>
+    <CheckboxGroup value={grades} onChange={onChange}>
+      <HStack spacing={4}>
+        {[1, 2, 3, 4].map((grade) => (
+          <GradeCheckbox key={grade} grade={grade} isSelected={grades.includes(grade)} />
+        ))}
+      </HStack>
+    </CheckboxGroup>
+  </FormControl>
+));
+
+GradesFormControl.displayName = "GradesFormControl";
+
+// 요일 FormControl
+const DaysFormControl = memo(({ days, onChange }: { days: string[]; onChange: (value: string[]) => void }) => (
+  <FormControl>
+    <FormLabel>요일</FormLabel>
+    <CheckboxGroup value={days} onChange={onChange}>
+      <HStack spacing={4}>
+        {DAY_LABELS.map((day) => (
+          <DayCheckbox key={day} day={day} isSelected={days.includes(day)} />
+        ))}
+      </HStack>
+    </CheckboxGroup>
+  </FormControl>
+));
+
+DaysFormControl.displayName = "DaysFormControl";
+
+// 시간 FormControl
+const TimesFormControl = memo(
+  ({
+    times,
+    sortedSelectedTimes,
+    onTimesChange,
+    onTimeRemove,
+  }: {
+    times: number[];
+    sortedSelectedTimes: number[];
+    onTimesChange: (values: string[]) => void;
+    onTimeRemove: (time: number) => void;
+  }) => (
+    <FormControl>
+      <FormLabel>시간</FormLabel>
+      <CheckboxGroup colorScheme="green" value={times} onChange={onTimesChange}>
+        <Wrap spacing={1} mb={2}>
+          {sortedSelectedTimes.map((time) => (
+            <SelectedTimeTag key={time} time={time} onRemove={onTimeRemove} />
+          ))}
+        </Wrap>
+        <Stack spacing={2} overflowY="auto" h="100px" border="1px solid" borderColor="gray.200" borderRadius={5} p={2}>
+          {TIME_SLOTS.map((timeSlot) => (
+            <TimeSlotCheckbox key={timeSlot.id} timeSlot={timeSlot} isSelected={times.includes(timeSlot.id)} />
+          ))}
+        </Stack>
+      </CheckboxGroup>
+    </FormControl>
+  )
+);
+
+TimesFormControl.displayName = "TimesFormControl";
+
+// 전공 FormControl
+const MajorsFormControl = memo(
+  ({
+    majors,
+    allMajors,
+    onMajorsChange,
+    onMajorRemove,
+  }: {
+    majors: string[];
+    allMajors: string[];
+    onMajorsChange: (values: string[]) => void;
+    onMajorRemove: (major: string) => void;
+  }) => (
+    <FormControl>
+      <FormLabel>전공</FormLabel>
+      <CheckboxGroup colorScheme="green" value={majors} onChange={onMajorsChange}>
+        <Wrap spacing={1} mb={2}>
+          {majors.map((major) => (
+            <SelectedMajorTag key={major} major={major} onRemove={onMajorRemove} />
+          ))}
+        </Wrap>
+        <Stack spacing={2} overflowY="auto" h="100px" border="1px solid" borderColor="gray.200" borderRadius={5} p={2}>
+          {allMajors.map((major) => (
+            <MajorCheckbox key={major} major={major} isSelected={majors.includes(major)} />
+          ))}
+        </Stack>
+      </CheckboxGroup>
+    </FormControl>
+  )
+);
+
+MajorsFormControl.displayName = "MajorsFormControl";
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
@@ -345,7 +470,6 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
   useEffect(() => {
     if (!searchInfo) return;
-    //다이얼로그가 열려있을때만 호출
 
     // 이미 데이터가 로드되어 있으면 재로딩하지 않음
     if (lectures.length > 0) {
@@ -357,10 +481,14 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
       const start = performance.now();
       console.log("API 호출 시작: ", start);
 
-      const results = await fetchAllLectures();
-      const end = performance.now();
-      console.log("API 호출에 걸린 시간(ms): ", end - start);
-      setLectures(results);
+      try {
+        const results = await fetchAllLectures();
+        const end = performance.now();
+        console.log("API 호출에 걸린 시간(ms): ", end - start);
+        setLectures(results);
+      } catch (error) {
+        console.error("API 호출 실패:", error);
+      }
     };
 
     loadData();
@@ -406,100 +534,32 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
         <ModalBody>
           <VStack spacing={4} align="stretch">
             <HStack spacing={4}>
-              <FormControl>
-                <FormLabel>검색어</FormLabel>
-                <Input placeholder="과목명 또는 과목코드" value={searchOptions.query} onChange={handleQueryChange} />
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>학점</FormLabel>
-                <Select value={searchOptions.credits} onChange={handleCreditsChange}>
-                  <option value="">전체</option>
-                  <option value="1">1학점</option>
-                  <option value="2">2학점</option>
-                  <option value="3">3학점</option>
-                </Select>
-              </FormControl>
+              <SearchQueryFormControl query={searchOptions.query || ""} onChange={handleQueryChange} />
+              <CreditsFormControl credits={searchOptions.credits} onChange={handleCreditsChange} />
             </HStack>
 
             <HStack spacing={4}>
-              <FormControl>
-                <FormLabel>학년</FormLabel>
-                <CheckboxGroup value={searchOptions.grades} onChange={handleGradesChange}>
-                  <HStack spacing={4}>
-                    {[1, 2, 3, 4].map((grade) => (
-                      <GradeCheckbox key={grade} grade={grade} isSelected={searchOptions.grades.includes(grade)} />
-                    ))}
-                  </HStack>
-                </CheckboxGroup>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>요일</FormLabel>
-                <CheckboxGroup value={searchOptions.days} onChange={handleDaysChange}>
-                  <HStack spacing={4}>
-                    {DAY_LABELS.map((day) => (
-                      <DayCheckbox key={day} day={day} isSelected={searchOptions.days.includes(day)} />
-                    ))}
-                  </HStack>
-                </CheckboxGroup>
-              </FormControl>
+              <GradesFormControl grades={searchOptions.grades} onChange={handleGradesChange} />
+              <DaysFormControl days={searchOptions.days} onChange={handleDaysChange} />
             </HStack>
 
             <HStack spacing={4}>
-              <FormControl>
-                <FormLabel>시간</FormLabel>
-                <CheckboxGroup colorScheme="green" value={searchOptions.times} onChange={handleTimesChange}>
-                  <Wrap spacing={1} mb={2}>
-                    {sortedSelectedTimes.map((time) => (
-                      <SelectedTimeTag key={time} time={time} onRemove={handleTimeRemove} />
-                    ))}
-                  </Wrap>
-                  <Stack
-                    spacing={2}
-                    overflowY="auto"
-                    h="100px"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    borderRadius={5}
-                    p={2}
-                  >
-                    {TIME_SLOTS.map((timeSlot) => (
-                      <TimeSlotCheckbox
-                        key={timeSlot.id}
-                        timeSlot={timeSlot}
-                        isSelected={searchOptions.times.includes(timeSlot.id)}
-                      />
-                    ))}
-                  </Stack>
-                </CheckboxGroup>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>전공</FormLabel>
-                <CheckboxGroup colorScheme="green" value={searchOptions.majors} onChange={handleMajorsChange}>
-                  <Wrap spacing={1} mb={2}>
-                    {searchOptions.majors.map((major) => (
-                      <SelectedMajorTag key={major} major={major} onRemove={handleMajorRemove} />
-                    ))}
-                  </Wrap>
-                  <Stack
-                    spacing={2}
-                    overflowY="auto"
-                    h="100px"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    borderRadius={5}
-                    p={2}
-                  >
-                    {allMajors.map((major) => (
-                      <MajorCheckbox key={major} major={major} isSelected={searchOptions.majors.includes(major)} />
-                    ))}
-                  </Stack>
-                </CheckboxGroup>
-              </FormControl>
+              <TimesFormControl
+                times={searchOptions.times}
+                sortedSelectedTimes={sortedSelectedTimes}
+                onTimesChange={handleTimesChange}
+                onTimeRemove={handleTimeRemove}
+              />
+              <MajorsFormControl
+                majors={searchOptions.majors}
+                allMajors={allMajors}
+                onMajorsChange={handleMajorsChange}
+                onMajorRemove={handleMajorRemove}
+              />
             </HStack>
+
             <Text align="right">검색결과: {filteredLectures.length}개</Text>
+
             <Box>
               <Table>
                 <Thead>
@@ -519,12 +579,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <Table size="sm" variant="striped">
                   <Tbody>
                     {visibleLectures.map((lecture, index) => (
-                      <LectureRow
-                        key={`${lecture.id}-${index}`}
-                        lecture={lecture}
-                        index={index}
-                        onAddSchedule={addSchedule}
-                      />
+                      <LectureRow key={`${lecture.id}-${index}`} lecture={lecture} onAddSchedule={addSchedule} />
                     ))}
                   </Tbody>
                 </Table>
