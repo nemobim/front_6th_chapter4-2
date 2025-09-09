@@ -121,25 +121,50 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
   const filteredLectures = useMemo(() => {
     const { query = "", credits, grades, days, times, majors } = searchOptions;
-    return lectures
-      .filter((lecture) => lecture.title.toLowerCase().includes(query.toLowerCase()) || lecture.id.toLowerCase().includes(query.toLowerCase()))
-      .filter((lecture) => grades.length === 0 || grades.includes(lecture.grade))
-      .filter((lecture) => majors.length === 0 || majors.includes(lecture.major))
-      .filter((lecture) => !credits || lecture.credits.startsWith(String(credits)))
-      .filter((lecture) => {
-        if (days.length === 0) {
-          return true;
-        }
+
+    return lectures.filter((lecture) => {
+      // 검색어 필터링
+      if (
+        query &&
+        !lecture.title.toLowerCase().includes(query.toLowerCase()) &&
+        !lecture.id.toLowerCase().includes(query.toLowerCase())
+      ) {
+        return false;
+      }
+
+      // 학년 필터링
+      if (grades.length > 0 && !grades.includes(lecture.grade)) {
+        return false;
+      }
+
+      // 전공 필터링
+      if (majors.length > 0 && !majors.includes(lecture.major)) {
+        return false;
+      }
+
+      // 학점 필터링
+      if (credits && !lecture.credits.startsWith(String(credits))) {
+        return false;
+      }
+
+      // 요일 필터링
+      if (days.length > 0) {
         const schedules = lecture.schedule ? parseSchedule(lecture.schedule) : [];
-        return schedules.some((s) => days.includes(s.day));
-      })
-      .filter((lecture) => {
-        if (times.length === 0) {
-          return true;
+        if (!schedules.some((s) => days.includes(s.day))) {
+          return false;
         }
+      }
+
+      // 시간 필터링
+      if (times.length > 0) {
         const schedules = lecture.schedule ? parseSchedule(lecture.schedule) : [];
-        return schedules.some((s) => s.range.some((time) => times.includes(time)));
-      });
+        if (!schedules.some((s) => s.range.some((time) => times.includes(time)))) {
+          return false;
+        }
+      }
+
+      return true;
+    });
   }, [lectures, searchOptions]);
 
   const lastPage = useMemo(() => Math.ceil(filteredLectures.length / PAGE_SIZE), [filteredLectures.length]);
@@ -226,7 +251,11 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>검색어</FormLabel>
-                <Input placeholder="과목명 또는 과목코드" value={searchOptions.query} onChange={(e) => changeSearchOption("query", e.target.value)} />
+                <Input
+                  placeholder="과목명 또는 과목코드"
+                  value={searchOptions.query}
+                  onChange={(e) => changeSearchOption("query", e.target.value)}
+                />
               </FormControl>
 
               <FormControl>
@@ -243,7 +272,10 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>학년</FormLabel>
-                <CheckboxGroup value={searchOptions.grades} onChange={(value) => changeSearchOption("grades", value.map(Number))}>
+                <CheckboxGroup
+                  value={searchOptions.grades}
+                  onChange={(value) => changeSearchOption("grades", value.map(Number))}
+                >
                   <HStack spacing={4}>
                     {[1, 2, 3, 4].map((grade) => (
                       <Checkbox key={grade} value={grade}>
@@ -256,7 +288,10 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>요일</FormLabel>
-                <CheckboxGroup value={searchOptions.days} onChange={(value) => changeSearchOption("days", value as string[])}>
+                <CheckboxGroup
+                  value={searchOptions.days}
+                  onChange={(value) => changeSearchOption("days", value as string[])}
+                >
                   <HStack spacing={4}>
                     {DAY_LABELS.map((day) => (
                       <Checkbox key={day} value={day}>
@@ -271,7 +306,11 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>시간</FormLabel>
-                <CheckboxGroup colorScheme="green" value={searchOptions.times} onChange={(values) => changeSearchOption("times", values.map(Number))}>
+                <CheckboxGroup
+                  colorScheme="green"
+                  value={searchOptions.times}
+                  onChange={(values) => changeSearchOption("times", values.map(Number))}
+                >
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.times
                       .sort((a, b) => a - b)
@@ -289,7 +328,15 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                         </Tag>
                       ))}
                   </Wrap>
-                  <Stack spacing={2} overflowY="auto" h="100px" border="1px solid" borderColor="gray.200" borderRadius={5} p={2}>
+                  <Stack
+                    spacing={2}
+                    overflowY="auto"
+                    h="100px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius={5}
+                    p={2}
+                  >
                     {TIME_SLOTS.map(({ id, label }) => (
                       <Box key={id}>
                         <Checkbox key={id} size="sm" value={id}>
@@ -303,7 +350,11 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>전공</FormLabel>
-                <CheckboxGroup colorScheme="green" value={searchOptions.majors} onChange={(values) => changeSearchOption("majors", values as string[])}>
+                <CheckboxGroup
+                  colorScheme="green"
+                  value={searchOptions.majors}
+                  onChange={(values) => changeSearchOption("majors", values as string[])}
+                >
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.majors.map((major) => (
                       <Tag key={major} size="sm" variant="outline" colorScheme="blue">
@@ -319,7 +370,15 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                       </Tag>
                     ))}
                   </Wrap>
-                  <Stack spacing={2} overflowY="auto" h="100px" border="1px solid" borderColor="gray.200" borderRadius={5} p={2}>
+                  <Stack
+                    spacing={2}
+                    overflowY="auto"
+                    h="100px"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius={5}
+                    p={2}
+                  >
                     {allMajors.map((major) => (
                       <Box key={major}>
                         <Checkbox key={major} size="sm" value={major}>
