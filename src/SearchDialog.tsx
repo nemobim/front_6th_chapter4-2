@@ -215,7 +215,7 @@ const CreditsFormControl = memo(
     credits,
     onChange,
   }: {
-    credits: string | undefined;
+    credits: number | undefined;
     onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   }) => (
     <FormControl>
@@ -517,11 +517,13 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   }, [lastPage]);
 
   useEffect(() => {
-    setSearchOptions((prev) => ({
-      ...prev,
+    setSearchOptions({
+      query: "",
+      grades: [],
       days: searchInfo?.day ? [searchInfo.day] : [],
       times: searchInfo?.time ? [searchInfo.time] : [],
-    }));
+      majors: [],
+    });
     setPage(1);
   }, [searchInfo]);
 
