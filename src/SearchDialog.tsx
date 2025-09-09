@@ -34,6 +34,7 @@ import { DAY_LABELS } from "./constants.ts";
 import { useScheduleContext } from "./ScheduleContext.tsx";
 import { Lecture } from "./types.ts";
 import { cacheStore, parseSchedule } from "./utils.ts";
+import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 
 interface Props {
   searchInfo: {
@@ -171,13 +172,13 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const visibleLectures = useMemo(() => filteredLectures.slice(0, page * PAGE_SIZE), [filteredLectures, page]);
   const allMajors = useMemo(() => [...new Set(lectures.map((lecture) => lecture.major))], [lectures]);
 
-  const changeSearchOption = (field: keyof SearchOption, value: SearchOption[typeof field]) => {
+  const changeSearchOption = useAutoCallback((field: keyof SearchOption, value: SearchOption[typeof field]) => {
     setPage(1);
-    setSearchOptions({ ...searchOptions, [field]: value });
+    setSearchOptions((prev) => ({ ...prev, [field]: value }));
     loaderWrapperRef.current?.scrollTo(0, 0);
-  };
+  });
 
-  const addSchedule = (lecture: Lecture) => {
+  const addSchedule = useAutoCallback((lecture: Lecture) => {
     if (!searchInfo) return;
 
     const { tableId } = searchInfo;
@@ -193,7 +194,45 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     }));
 
     onClose();
-  };
+  });
+
+  const handleQueryChange = useAutoCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    changeSearchOption("query", e.target.value);
+  });
+
+  const handleCreditsChange = useAutoCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    changeSearchOption("credits", e.target.value);
+  });
+
+  const handleGradesChange = useAutoCallback((value: string[]) => {
+    changeSearchOption("grades", value.map(Number));
+  });
+
+  const handleDaysChange = useAutoCallback((value: string[]) => {
+    changeSearchOption("days", value);
+  });
+
+  const handleTimesChange = useAutoCallback((values: number[]) => {
+    changeSearchOption("times", values);
+  });
+
+  const handleMajorsChange = useAutoCallback((values: string[]) => {
+    changeSearchOption("majors", values);
+  });
+
+  const handleTimeRemove = useAutoCallback((time: number) => {
+    changeSearchOption(
+      "times",
+      searchOptions.times.filter((v) => v !== time)
+    );
+  });
+
+  const handleMajorRemove = useAutoCallback((major: string) => {
+    changeSearchOption(
+      "majors",
+      searchOptions.majors.filter((v) => v !== major)
+    );
+  });
 
   useEffect(() => {
     if (!searchInfo) return;
@@ -251,16 +290,12 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>검색어</FormLabel>
-                <Input
-                  placeholder="과목명 또는 과목코드"
-                  value={searchOptions.query}
-                  onChange={(e) => changeSearchOption("query", e.target.value)}
-                />
+                <Input placeholder="과목명 또는 과목코드" value={searchOptions.query} onChange={handleQueryChange} />
               </FormControl>
 
               <FormControl>
                 <FormLabel>학점</FormLabel>
-                <Select value={searchOptions.credits} onChange={(e) => changeSearchOption("credits", e.target.value)}>
+                <Select value={searchOptions.credits} onChange={handleCreditsChange}>
                   <option value="">전체</option>
                   <option value="1">1학점</option>
                   <option value="2">2학점</option>
@@ -272,10 +307,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>학년</FormLabel>
-                <CheckboxGroup
-                  value={searchOptions.grades}
-                  onChange={(value) => changeSearchOption("grades", value.map(Number))}
-                >
+                <CheckboxGroup value={searchOptions.grades} onChange={handleGradesChange}>
                   <HStack spacing={4}>
                     {[1, 2, 3, 4].map((grade) => (
                       <Checkbox key={grade} value={grade}>
@@ -288,10 +320,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>요일</FormLabel>
-                <CheckboxGroup
-                  value={searchOptions.days}
-                  onChange={(value) => changeSearchOption("days", value as string[])}
-                >
+                <CheckboxGroup value={searchOptions.days} onChange={handleDaysChange}>
                   <HStack spacing={4}>
                     {DAY_LABELS.map((day) => (
                       <Checkbox key={day} value={day}>
@@ -306,25 +335,14 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             <HStack spacing={4}>
               <FormControl>
                 <FormLabel>시간</FormLabel>
-                <CheckboxGroup
-                  colorScheme="green"
-                  value={searchOptions.times}
-                  onChange={(values) => changeSearchOption("times", values.map(Number))}
-                >
+                <CheckboxGroup colorScheme="green" value={searchOptions.times} onChange={handleTimesChange}>
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.times
                       .sort((a, b) => a - b)
                       .map((time) => (
                         <Tag key={time} size="sm" variant="outline" colorScheme="blue">
                           <TagLabel>{time}교시</TagLabel>
-                          <TagCloseButton
-                            onClick={() =>
-                              changeSearchOption(
-                                "times",
-                                searchOptions.times.filter((v) => v !== time)
-                              )
-                            }
-                          />
+                          <TagCloseButton onClick={() => handleTimeRemove(time)} />
                         </Tag>
                       ))}
                   </Wrap>
@@ -350,23 +368,12 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
               <FormControl>
                 <FormLabel>전공</FormLabel>
-                <CheckboxGroup
-                  colorScheme="green"
-                  value={searchOptions.majors}
-                  onChange={(values) => changeSearchOption("majors", values as string[])}
-                >
+                <CheckboxGroup colorScheme="green" value={searchOptions.majors} onChange={handleMajorsChange}>
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.majors.map((major) => (
                       <Tag key={major} size="sm" variant="outline" colorScheme="blue">
                         <TagLabel>{major.split("<p>").pop()}</TagLabel>
-                        <TagCloseButton
-                          onClick={() =>
-                            changeSearchOption(
-                              "majors",
-                              searchOptions.majors.filter((v) => v !== major)
-                            )
-                          }
-                        />
+                        <TagCloseButton onClick={() => handleMajorRemove(major)} />
                       </Tag>
                     ))}
                   </Wrap>
