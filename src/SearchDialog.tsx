@@ -29,7 +29,7 @@ import {
   Wrap,
 } from "@chakra-ui/react";
 import axios from "axios";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DAY_LABELS } from "./constants.ts";
 import { useScheduleContext } from "./ScheduleContext.tsx";
 import { Lecture } from "./types.ts";
@@ -103,6 +103,44 @@ const fetchAllLectures = async () =>
     (console.log("API Call 5", performance.now()), fetchMajors()),
     (console.log("API Call 6", performance.now()), fetchLiberalArts()),
   ]);
+
+const LectureRow = memo(
+  ({
+    lecture,
+    index,
+    onAddSchedule,
+  }: {
+    lecture: Lecture;
+    index: number;
+    onAddSchedule: (lecture: Lecture) => void;
+  }) => (
+    <Tr key={`${lecture.id}-${index}`}>
+      <Td width="100px">{lecture.id}</Td>
+      <Td width="50px">{lecture.grade}</Td>
+      <Td width="200px">{lecture.title}</Td>
+      <Td width="50px">{lecture.credits}</Td>
+      <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.major }} />
+      <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.schedule }} />
+      <Td width="80px">
+        <Button size="sm" colorScheme="green" onClick={() => onAddSchedule(lecture)}>
+          추가
+        </Button>
+      </Td>
+    </Tr>
+  )
+);
+
+LectureRow.displayName = "LectureRow";
+
+const MajorCheckbox = memo(({ major, isSelected }: { major: string; isSelected: boolean }) => (
+  <Box key={major}>
+    <Checkbox key={major} size="sm" value={major} isChecked={isSelected}>
+      {major.replace(/<p>/gi, " ")}
+    </Checkbox>
+  </Box>
+));
+
+MajorCheckbox.displayName = "MajorCheckbox";
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
@@ -387,11 +425,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                     p={2}
                   >
                     {allMajors.map((major) => (
-                      <Box key={major}>
-                        <Checkbox key={major} size="sm" value={major}>
-                          {major.replace(/<p>/gi, " ")}
-                        </Checkbox>
-                      </Box>
+                      <MajorCheckbox key={major} major={major} isSelected={searchOptions.majors.includes(major)} />
                     ))}
                   </Stack>
                 </CheckboxGroup>
@@ -417,19 +451,12 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <Table size="sm" variant="striped">
                   <Tbody>
                     {visibleLectures.map((lecture, index) => (
-                      <Tr key={`${lecture.id}-${index}`}>
-                        <Td width="100px">{lecture.id}</Td>
-                        <Td width="50px">{lecture.grade}</Td>
-                        <Td width="200px">{lecture.title}</Td>
-                        <Td width="50px">{lecture.credits}</Td>
-                        <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.major }} />
-                        <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.schedule }} />
-                        <Td width="80px">
-                          <Button size="sm" colorScheme="green" onClick={() => addSchedule(lecture)}>
-                            추가
-                          </Button>
-                        </Td>
-                      </Tr>
+                      <LectureRow
+                        key={`${lecture.id}-${index}`}
+                        lecture={lecture}
+                        index={index}
+                        onAddSchedule={addSchedule}
+                      />
                     ))}
                   </Tbody>
                 </Table>
