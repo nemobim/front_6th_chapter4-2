@@ -94,15 +94,26 @@ const fetchMajors = () => cache.get("majors", fetchMajorsFn);
 const fetchLiberalArts = () => cache.get("liberal-arts", fetchLiberalArtsFn);
 
 // TODO: 이 코드를 개선해서 API 호출을 최소화 해보세요 + Promise.all이 현재 잘못 사용되고 있습니다. 같이 개선해주세요.
-const fetchAllLectures = async () =>
-  await Promise.all([
-    (console.log("API Call 1", performance.now()), fetchMajors()),
-    (console.log("API Call 2", performance.now()), fetchLiberalArts()),
-    (console.log("API Call 3", performance.now()), fetchMajors()),
-    (console.log("API Call 4", performance.now()), fetchLiberalArts()),
-    (console.log("API Call 5", performance.now()), fetchMajors()),
-    (console.log("API Call 6", performance.now()), fetchLiberalArts()),
-  ]);
+const fetchAllLectures = async () => {
+  // Promise 배열을 먼저 생성하여 병렬 실행 보장
+  const promises = [
+    fetchMajors(), // API Call 1
+    fetchLiberalArts(), // API Call 2
+    fetchMajors(), // API Call 3 - 캐시에서 반환
+    fetchLiberalArts(), // API Call 4 - 캐시에서 반환
+    fetchMajors(), // API Call 5 - 캐시에서 반환
+    fetchLiberalArts(), // API Call 6 - 캐시에서 반환
+  ];
+
+  promises.forEach((_, index) => {
+    console.log(`API Call ${index + 1}`, performance.now());
+  });
+
+  const results = await Promise.all(promises);
+  console.log("모든 API 호출 완료", performance.now());
+
+  return results.flatMap((result) => result);
+};
 
 const LectureRow = memo(
   ({
@@ -141,6 +152,57 @@ const MajorCheckbox = memo(({ major, isSelected }: { major: string; isSelected: 
 ));
 
 MajorCheckbox.displayName = "MajorCheckbox";
+
+// 시간대 체크박스
+const TimeSlotCheckbox = memo(
+  ({ timeSlot, isSelected }: { timeSlot: { id: number; label: string }; isSelected: boolean }) => (
+    <Box key={timeSlot.id}>
+      <Checkbox key={timeSlot.id} size="sm" value={timeSlot.id} isChecked={isSelected}>
+        {timeSlot.id}교시({timeSlot.label})
+      </Checkbox>
+    </Box>
+  )
+);
+
+TimeSlotCheckbox.displayName = "TimeSlotCheckbox";
+
+// 선택된 시간 태그
+const SelectedTimeTag = memo(({ time, onRemove }: { time: number; onRemove: (time: number) => void }) => (
+  <Tag key={time} size="sm" variant="outline" colorScheme="blue">
+    <TagLabel>{time}교시</TagLabel>
+    <TagCloseButton onClick={() => onRemove(time)} />
+  </Tag>
+));
+
+SelectedTimeTag.displayName = "SelectedTimeTag";
+
+// 선택된 전공 태그
+const SelectedMajorTag = memo(({ major, onRemove }: { major: string; onRemove: (major: string) => void }) => (
+  <Tag key={major} size="sm" variant="outline" colorScheme="blue">
+    <TagLabel>{major.split("<p>").pop()}</TagLabel>
+    <TagCloseButton onClick={() => onRemove(major)} />
+  </Tag>
+));
+
+SelectedMajorTag.displayName = "SelectedMajorTag";
+
+// 학년 체크박스
+const GradeCheckbox = memo(({ grade, isSelected }: { grade: number; isSelected: boolean }) => (
+  <Checkbox key={grade} value={grade} isChecked={isSelected}>
+    {grade}학년
+  </Checkbox>
+));
+
+GradeCheckbox.displayName = "GradeCheckbox";
+
+// 요일 체크박스
+const DayCheckbox = memo(({ day, isSelected }: { day: string; isSelected: boolean }) => (
+  <Checkbox key={day} value={day} isChecked={isSelected}>
+    {day}
+  </Checkbox>
+));
+
+DayCheckbox.displayName = "DayCheckbox";
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
@@ -210,6 +272,9 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const visibleLectures = useMemo(() => filteredLectures.slice(0, page * PAGE_SIZE), [filteredLectures, page]);
   const allMajors = useMemo(() => [...new Set(lectures.map((lecture) => lecture.major))], [lectures]);
 
+  // 정렬된 시간 목록 메모화
+  const sortedSelectedTimes = useMemo(() => searchOptions.times.sort((a, b) => a - b), [searchOptions.times]);
+
   const changeSearchOption = useAutoCallback((field: keyof SearchOption, value: SearchOption[typeof field]) => {
     setPage(1);
     setSearchOptions((prev) => ({ ...prev, [field]: value }));
@@ -250,8 +315,8 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     changeSearchOption("days", value);
   });
 
-  const handleTimesChange = useAutoCallback((values: number[]) => {
-    changeSearchOption("times", values);
+  const handleTimesChange = useAutoCallback((values: string[]) => {
+    changeSearchOption("times", values.map(Number));
   });
 
   const handleMajorsChange = useAutoCallback((values: string[]) => {
@@ -280,9 +345,8 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     console.log("API 호출 시작: ", start);
     fetchAllLectures().then((results) => {
       const end = performance.now();
-      console.log("모든 API 호출 완료 ", end);
       console.log("API 호출에 걸린 시간(ms): ", end - start);
-      setLectures(results.flatMap((result) => result));
+      setLectures(results);
     });
   }, [searchInfo]);
 
@@ -348,9 +412,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <CheckboxGroup value={searchOptions.grades} onChange={handleGradesChange}>
                   <HStack spacing={4}>
                     {[1, 2, 3, 4].map((grade) => (
-                      <Checkbox key={grade} value={grade}>
-                        {grade}학년
-                      </Checkbox>
+                      <GradeCheckbox key={grade} grade={grade} isSelected={searchOptions.grades.includes(grade)} />
                     ))}
                   </HStack>
                 </CheckboxGroup>
@@ -361,9 +423,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <CheckboxGroup value={searchOptions.days} onChange={handleDaysChange}>
                   <HStack spacing={4}>
                     {DAY_LABELS.map((day) => (
-                      <Checkbox key={day} value={day}>
-                        {day}
-                      </Checkbox>
+                      <DayCheckbox key={day} day={day} isSelected={searchOptions.days.includes(day)} />
                     ))}
                   </HStack>
                 </CheckboxGroup>
@@ -375,14 +435,9 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <FormLabel>시간</FormLabel>
                 <CheckboxGroup colorScheme="green" value={searchOptions.times} onChange={handleTimesChange}>
                   <Wrap spacing={1} mb={2}>
-                    {searchOptions.times
-                      .sort((a, b) => a - b)
-                      .map((time) => (
-                        <Tag key={time} size="sm" variant="outline" colorScheme="blue">
-                          <TagLabel>{time}교시</TagLabel>
-                          <TagCloseButton onClick={() => handleTimeRemove(time)} />
-                        </Tag>
-                      ))}
+                    {sortedSelectedTimes.map((time) => (
+                      <SelectedTimeTag key={time} time={time} onRemove={handleTimeRemove} />
+                    ))}
                   </Wrap>
                   <Stack
                     spacing={2}
@@ -393,12 +448,12 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                     borderRadius={5}
                     p={2}
                   >
-                    {TIME_SLOTS.map(({ id, label }) => (
-                      <Box key={id}>
-                        <Checkbox key={id} size="sm" value={id}>
-                          {id}교시({label})
-                        </Checkbox>
-                      </Box>
+                    {TIME_SLOTS.map((timeSlot) => (
+                      <TimeSlotCheckbox
+                        key={timeSlot.id}
+                        timeSlot={timeSlot}
+                        isSelected={searchOptions.times.includes(timeSlot.id)}
+                      />
                     ))}
                   </Stack>
                 </CheckboxGroup>
@@ -409,10 +464,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <CheckboxGroup colorScheme="green" value={searchOptions.majors} onChange={handleMajorsChange}>
                   <Wrap spacing={1} mb={2}>
                     {searchOptions.majors.map((major) => (
-                      <Tag key={major} size="sm" variant="outline" colorScheme="blue">
-                        <TagLabel>{major.split("<p>").pop()}</TagLabel>
-                        <TagCloseButton onClick={() => handleMajorRemove(major)} />
-                      </Tag>
+                      <SelectedMajorTag key={major} major={major} onRemove={handleMajorRemove} />
                     ))}
                   </Wrap>
                   <Stack
