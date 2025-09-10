@@ -35,6 +35,7 @@ import { useScheduleContext } from "./ScheduleContext.tsx";
 import { Lecture } from "./types.ts";
 import { cacheStore, parseSchedule } from "./utils.ts";
 import { useAutoCallback } from "./hooks/useAutoCallback.ts";
+import { useDebounce } from "./hooks/useDebounce.ts";
 
 interface Props {
   searchInfo: {
@@ -346,20 +347,21 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     majors: [],
   });
 
-  // 2) 불필요한 연산 방지 - 필터링 결과를 캐시하여 인피니트 스크롤시 재검색 방지
+  // 디바운스 적용
+  const debouncedQuery = useDebounce(searchOptions.query, 300);
+
+  // 불필요한 연산 방지 - 필터링 결과를 캐시하여 인피니트 스크롤시 재검색 방지
   const filteredLectures = useMemo(() => {
-    const { query = "", credits, grades, days, times, majors } = searchOptions;
+    const { credits, grades, days, times, majors } = searchOptions;
 
     return lectures.filter((lecture) => {
       // 검색어 필터링
-      if (
-        query &&
-        !lecture.title.toLowerCase().includes(query.toLowerCase()) &&
-        !lecture.id.toLowerCase().includes(query.toLowerCase())
-      ) {
-        return false;
+      if (debouncedQuery) {
+        const queryLower = debouncedQuery.toLowerCase();
+        if (!lecture.title.toLowerCase().includes(queryLower) && !lecture.id.toLowerCase().includes(queryLower)) {
+          return false;
+        }
       }
-
       // 학년 필터링
       if (grades.length > 0 && !grades.includes(lecture.grade)) {
         return false;
@@ -393,7 +395,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
       return true;
     });
-  }, [lectures, searchOptions]); // searchOptions 변경시에만 재계산
+  }, [lectures, debouncedQuery, searchOptions]);
 
   const lastPage = useMemo(() => Math.ceil(filteredLectures.length / PAGE_SIZE), [filteredLectures.length]);
 
@@ -401,6 +403,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const visibleLectures = useMemo(() => {
     return filteredLectures.slice(0, page * PAGE_SIZE);
   }, [filteredLectures, page]);
+
   const allMajors = useMemo(() => [...new Set(lectures.map((lecture) => lecture.major))], [lectures]);
 
   // 정렬된 시간 목록 메모화
