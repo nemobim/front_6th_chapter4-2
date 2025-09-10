@@ -517,6 +517,8 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   }, [lastPage]);
 
   useEffect(() => {
+    if (!searchInfo) return;
+
     setSearchOptions({
       query: "",
       grades: [],
