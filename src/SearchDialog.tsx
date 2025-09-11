@@ -104,8 +104,16 @@ const INITIAL_SEARCH_OPTIONS: SearchOption = {
 // 캐시 및 API 최적화
 const cache = cacheStore<Lecture[]>();
 
-const fetchMajorsFn = () => axios.get<Lecture[]>("/schedules-majors.json").then((response) => response.data);
-const fetchLiberalArtsFn = () => axios.get<Lecture[]>("/schedules-liberal-arts.json").then((response) => response.data);
+// Vite의 BASE_URL을 사용하여 동적으로 경로 생성
+const getApiPath = (filename: string) => {
+  const baseUrl = import.meta.env.BASE_URL;
+  return `${baseUrl}${filename}`;
+};
+
+const fetchMajorsFn = () => axios.get<Lecture[]>(getApiPath("schedules-majors.json")).then((response) => response.data);
+
+const fetchLiberalArtsFn = () =>
+  axios.get<Lecture[]>(getApiPath("schedules-liberal-arts.json")).then((response) => response.data);
 
 const fetchMajors = () => cache.get("majors", fetchMajorsFn);
 const fetchLiberalArts = () => cache.get("liberal-arts", fetchLiberalArtsFn);
