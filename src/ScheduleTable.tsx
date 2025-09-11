@@ -210,7 +210,7 @@ const DraggableSchedule = memo(
     }, []);
 
     return (
-      <Popover>
+      <Popover isLazy>
         <PopoverTrigger>
           <Box
             position="absolute"
